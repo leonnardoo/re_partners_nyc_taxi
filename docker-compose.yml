@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: nyc_taxi_db
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test_pass
+      POSTGRES_DB: nyc_taxi_warehouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d

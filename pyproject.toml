@@ -1,0 +1,19 @@
+[project]
+name = "nyc-taxi-mini-pipeline"
+version = "0.1.0"
+description = "Project to do a ETL from NYC Taxi Trips"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "psycopg2-binary>=2.9.11",
+    "pyspark>=4.1.1",
+    "pytest>=9.0.2",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+]
+
+[project.scripts]
+dock = "docker-composer up -d"
+ingest = "nyc-taxi-mini-pipeline.src.ingest_bronze:main"
+transform = "uv run src/transform_gold.py"
+load = "uv run src/load_gold_to_postgres.py"
