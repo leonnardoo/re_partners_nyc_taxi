@@ -19,8 +19,8 @@ def load_gold_to_postgres():
 
     # Database connection properties
     database = os.getenv("DATABASE")
-    user = os.getenv("USER")
-    password = os.getenv("PASSWORD")
+    user_pg = os.getenv("USER_PG")
+    password_pg = os.getenv("PASSWORD_PG")
 
     db_url = f"jdbc:postgresql://localhost:5432/{database}"
 
@@ -31,8 +31,8 @@ def load_gold_to_postgres():
     .format("jdbc") \
     .option("url", db_url) \
     .option("dbtable", "dim_location") \
-    .option("user", user) \
-    .option("password", password) \
+    .option("user", user_pg) \
+    .option("password", password_pg) \
     .option("driver", "org.postgresql.Driver") \
     .mode("append") \
     .save()
@@ -46,8 +46,8 @@ def load_gold_to_postgres():
     .format("jdbc") \
     .option("url", db_url) \
     .option("dbtable", "fact_trip") \
-    .option("user", user) \
-    .option("password", password) \
+    .option("user", user_pg) \
+    .option("password", password_pg) \
     .option("driver", "org.postgresql.Driver") \
     .mode("append") \
     .save()
