@@ -98,8 +98,8 @@ jobs:
           docker run --rm \
             -v $(pwd)/data:/app/data \
             --network host \
-            -e DATABASE=${{ secrets.DB_NAME }} \
-            -e USER=${{ secrets.DB_USER }} \
-            -e PASSWORD=${{ secrets.DB_PASSWORD }} \
+            -e DATABASE=${{ secrets.DATABASE_PG }} \
+            -e USER=${{ secrets.USER_PG }} \
+            -e PASSWORD=${{ secrets.PASSWORD_PG }} \
             nyc-taxi-pipeline:${{ github.sha }} \
             python3 src/load_gold_to_postgres.py

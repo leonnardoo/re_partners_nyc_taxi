@@ -18,11 +18,11 @@ def load_gold_to_postgres():
         .getOrCreate()
 
     # Database connection properties
-    database = os.getenv("DATABASE")
+    database_pg = os.getenv("DATABASE_PG")
     user_pg = os.getenv("USER_PG")
     password_pg = os.getenv("PASSWORD_PG")
 
-    db_url = f"jdbc:postgresql://localhost:5432/{database}"
+    db_url = f"jdbc:postgresql://localhost:5432/{database_pg}"
 
     # Load dimension
     dim_df = spark.read.parquet("data/gold/nyc_taxi/dim_location/")
