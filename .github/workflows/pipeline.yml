@@ -36,7 +36,13 @@ jobs:
       - name: Run PySpark Unit Tests
         run: uv run pytest tests/
 
-      # 4. Terraform Validate
+      # 4. Install Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.14.5"
+
+      # 5. Terraform Validate
       - name: Terraform Format & Validate
         run: |
           cd terraform
