@@ -88,6 +88,7 @@ jobs:
         run: |
           docker run --rm \
             --network host \
+            -v $(pwd)/data:/app/data \
             nyc-taxi-pipeline:${{ github.sha }} \
             python3 src/transform_gold.py --months 2023-06
 
@@ -96,5 +97,6 @@ jobs:
         run: |
           docker run --rm \
             --network host \
+            -v $(pwd)/data:/app/data \
             nyc-taxi-pipeline:${{ github.sha }} \
             python3 src/load_gold_to_postgres.py
