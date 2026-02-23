@@ -96,7 +96,10 @@ jobs:
       - name: Execute Load
         run: |
           docker run --rm \
-            --network host \
             -v $(pwd)/data:/app/data \
+            --network host \
+            -e DATABASE=${{ secrets.DB_NAME }} \
+            -e USER=${{ secrets.DB_USER }} \
+            -e PASSWORD=${{ secrets.DB_PASSWORD }} \
             nyc-taxi-pipeline:${{ github.sha }} \
             python3 src/load_gold_to_postgres.py
