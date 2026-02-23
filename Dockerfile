@@ -13,6 +13,8 @@ WORKDIR /app
 # Copy files necessary for installing dependencies first
 COPY pyproject.toml uv.lock ./
 
+ENV UV_PYTHON=python3.12
+
 # Install dependencies using uv
 # --frozen make sure to use the exact versions in uv.lock
 # --no-install-project no install of the project itself, only dependencies
