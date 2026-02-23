@@ -1,5 +1,5 @@
-# Official Spark image with Python 3.9
-FROM apache/spark:3.5.1-python3
+# Official Spark image with Python
+FROM apache/spark:4.1.1-python3
 
 # Alternate to root user for privilege
 USER root
@@ -22,6 +22,7 @@ RUN uv sync --frozen --no-install-project
 
 # Download PostgreSQL JDBC driver and place it in Spark's jars directory
 ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /opt/bitnami/spark/jars/
+ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /opt/spark/jars/
 
 # Copy all project files into the container
 COPY . .
