@@ -2,6 +2,10 @@ from pyspark.sql import SparkSession
 from dotenv import load_dotenv
 import os
 
+# For load gold to BigQuery (if needed)
+from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
+
 load_dotenv("config/.env")
 
 import logging
@@ -20,12 +24,6 @@ def load_gold_to_postgres():
 
     db_url = f"jdbc:postgresql://localhost:5432/{database}"
 
-    db_properties = {
-        "user": user,
-        "password": password,
-        "driver": "org.postgresql.Driver"
-    }
-
     # Load dimension
     dim_df = spark.read.parquet("data/gold/nyc_taxi/dim_location/")
 
@@ -33,8 +31,8 @@ def load_gold_to_postgres():
     .format("jdbc") \
     .option("url", db_url) \
     .option("dbtable", "dim_location") \
-    .option("user", "test") \
-    .option("password", "test_pass") \
+    .option("user", user) \
+    .option("password", password) \
     .option("driver", "org.postgresql.Driver") \
     .mode("append") \
     .save()
@@ -48,13 +46,57 @@ def load_gold_to_postgres():
     .format("jdbc") \
     .option("url", db_url) \
     .option("dbtable", "fact_trip") \
-    .option("user", "test") \
-    .option("password", "test_pass") \
+    .option("user", user) \
+    .option("password", password) \
     .option("driver", "org.postgresql.Driver") \
     .mode("append") \
     .save()
 
     logging.info("Loading to PostgreSQL completed successfully.")
 
+
+def load_gold_to_bigquery(project_id, dataset_id, table_id, file_path, location="US"):
+    client = bigquery.Client(project=project_id)
+    
+    # Check if dataset exists, if not create it
+    dataset_ref = client.dataset(dataset_id)
+    try:
+        client.get_dataset(dataset_ref)
+        logging.info(f"Dataset {dataset_id} already exists.")
+    except NotFound:
+        logging.info(f"Dataset {dataset_id} not found. Creating...")
+        dataset = bigquery.Dataset(dataset_ref)
+        dataset.location = location
+        client.create_dataset(dataset)
+        logging.info(f"Dataset {dataset_id} created successfully.")
+
+    # Configure the load job
+    table_full_id = f"{project_id}.{dataset_id}.{table_id}"
+    job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.PARQUET,
+        # 'WRITE_TRUNCATE' replace table, 'WRITE_APPEND' append to table, 'WRITE_EMPTY' fails if table is not empty
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND, 
+    )
+
+    # Execute the load job
+    with open(file_path, "rb") as source_file:
+        load_job = client.load_table_from_file(
+            source_file, table_full_id, job_config=job_config
+        )
+    
+    logging.info(f"Starting upload of file {file_path}...")
+    load_job.result()  # Waiting job to complete
+    logging.info(f"File {file_path} uploaded successfully to {table_full_id}.")
+
+    # Verify the load
+    destination_table = client.get_table(table_full_id)
+    logging.info(f"Success! The table now has {destination_table.num_rows} rows.")
+
+
+
 if __name__ == "__main__":
     load_gold_to_postgres()
+
+    # For load on BigQuery, you would first create the schema and then load the data:
+    # load_gold_to_bigquery("project-id", "gold_nyc_taxi", "dim_location", "data/gold/nyc_taxi/dim_location/")
+    # load_gold_to_bigquery("project-id", "gold_nyc_taxi", "fact_trip", "data/gold/nyc_taxi/fact_trip/"))

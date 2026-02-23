@@ -9,6 +9,11 @@ variable "region" {
   default     = "us-central1"
 }
 
+variable "landing_bucket_name" {
+  description = "Unique name of the GCS bucket (Landing)"
+  type        = string
+}
+
 variable "bronze_bucket_name" {
   description = "Unique name of the GCS bucket (Bronze)"
   type        = string
@@ -16,6 +21,11 @@ variable "bronze_bucket_name" {
 
 variable "gold_bucket_name" {
   description = "Unique name of the GCS bucket (Gold)"
+  type        = string
+}
+
+variable "landing_pipeline_sa" {
+  description = "Service Account ID (Landing)"
   type        = string
 }
 

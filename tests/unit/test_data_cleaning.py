@@ -15,7 +15,7 @@ def test_data_cleaning(spark):
     columns = ["VendorID", "trip_distance", "total_amount"]
     df = spark.createDataFrame(data, columns)
     
-    # Apply the cleaning logic (this should be the same as in transform_gold.py)
+    # Apply the cleaning logic from transform_gold.py
     df_cleaned = df.filter("trip_distance > 0 AND total_amount > 0")
     
     assert df_cleaned.count() == 1
