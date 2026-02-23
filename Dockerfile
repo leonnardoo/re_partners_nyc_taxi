@@ -1,5 +1,5 @@
 # Official Spark image with Python 3.9
-FROM bitnami/spark:3.4.1
+FROM bitnami/spark:3.5
 
 # Alternate to root user for privilege
 USER root
