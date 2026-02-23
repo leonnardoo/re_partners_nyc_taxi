@@ -22,7 +22,7 @@ jobs:
           enable-cache: true # Cache between runs for faster installs
 
       - name: Set up Python
-        run: uv python install 3.9
+        run: uv python install 3.10
 
       # 2. Sync and Linting
       # The uv tool will automatically sync dependencies from pyproject.toml before running the command
