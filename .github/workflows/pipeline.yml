@@ -22,12 +22,12 @@ jobs:
           enable-cache: true # Cache between runs for faster installs
 
       - name: Set up Python
-        run: uv python install 3.10
+        run: uv python install 3.11
 
       # 2. Sync and Linting
       # The uv tool will automatically sync dependencies from pyproject.toml before running the command
       - name: Run Linting (flake8)
-        run: uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        run: uv x flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
       # 3. Spark Unit Tests
       - name: Run PySpark Unit Tests
