@@ -81,5 +81,7 @@ if __name__ == "__main__":
             target_period.append((int(year), int(month)))
         
         ingest_data(target_period)
+    except ValueError:
+        logging.error("Date format invalid. Use YYYY-MM.")
     except Exception as e:
         logging.error(f"Error parsing input months: {e}. Correct format is YYYY-MM, separated by commas (ex: 2023-01,2023-02)")

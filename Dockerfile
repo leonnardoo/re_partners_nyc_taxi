@@ -26,13 +26,14 @@ ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /opt/bitnami/spar
 # Copy all project files into the container
 COPY . .
 
-# Garante que o Python use o ambiente virtual criado pelo uv
+# Use the virtual environment for all subsequent commands
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Define variáveis de ambiente para o Spark usar o Python correto
+# Env variables for PySpark to use the correct Python interpreter
 ENV PYSPARK_PYTHON=python3
 ENV PYSPARK_DRIVER_PYTHON=python3
+ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 # Standard command to show help, can be overridden when running the container
 CMD ["python3", "jobs/ingest_bronze.py", "--help"]
