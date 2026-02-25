@@ -55,6 +55,22 @@ jobs:
     name: "Docker Build & Sample Execution"
     needs: validate-and-test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ secrets.DATABASE_PG }}
+          POSTGRES_USER: ${{ secrets.USER_PG }}
+          POSTGRES_PASSWORD: ${{ secrets.PASSWORD_PG }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -63,16 +79,13 @@ jobs:
       - name: Build Pipeline Image
         run: docker build -t nyc-taxi-pipeline:${{ github.sha }} .
 
-      # Setup Database for Sample Run
-      - name: Start Postgres
+      # Initialize Database Schema
+      - name: Initialize Database Schema
         run: |
-          docker run -d --name test_db \
-            -e POSTGRES_USER=test \
-            -e POSTGRES_PASSWORD=test_pass \
-            -e POSTGRES_DB=nyc_taxi_warehouse \
-            -p 5432:5432 \
-            postgres:15
-          sleep 15
+          for f in init-db/*.sql; do
+            docker run --rm --network host -e PGPASSWORD=${{ secrets.PASSWORD_PG }} postgres:15 \
+            psql -h localhost -U ${{ secrets.USER_PG }} -d nyc_taxi_warehouse -f - < "$f"
+          done
 
       # Execute Sample Ingestion
       - name: Execute Sample Ingestion
@@ -103,3 +116,17 @@ jobs:
             -e PASSWORD=${{ secrets.PASSWORD_PG }} \
             nyc-taxi-pipeline:${{ github.sha }} \
             python3 src/load_gold_to_postgres.py
+
+      # Smoke Test: Verify data in Postgres
+      - name: Smoke Test - Verify Data in Postgres
+        run: |
+          docker run --rm \
+            --network host \
+            postgres:15 \
+            psql -h localhost -U ${{ secrets.USER_PG }} -d nyc_taxi_warehouse -c "
+              SELECT 'dim_location' as table_name, COUNT(*) FROM dim_location
+              UNION ALL
+              SELECT 'fact_trip' as table_name, COUNT(*) FROM fact_trip;
+            "
+        env:
+          PGPASSWORD: ${{ secrets.PASSWORD_PG }}
