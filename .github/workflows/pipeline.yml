@@ -119,11 +119,10 @@ jobs:
         run: |
           docker run --rm \
             --network host \
+            -e PGPASSWORD=${{ secrets.PASSWORD_PG }} \
             postgres:15 \
-            psql -h localhost -U ${{ secrets.USER_PG }} -d ${{ secrets.DATABASE_PG }} -c "
+            psql -h 127.0.0.1 -U ${{ secrets.USER_PG }} -d ${{ secrets.DATABASE_PG }} -c "
               SELECT 'dim_location' as table_name, COUNT(*) FROM dim_location
               UNION ALL
               SELECT 'fact_trip' as table_name, COUNT(*) FROM fact_trip;
             "
-        env:
-          PGPASSWORD: ${{ secrets.PASSWORD_PG }}
