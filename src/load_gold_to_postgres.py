@@ -24,6 +24,10 @@ def load_gold_to_postgres():
 
     db_url = f"jdbc:postgresql://localhost:5432/{database_pg}"
 
+    logging.info(f"Connecting to PostgreSQL database: {database_pg} with user: {user_pg} and password: {password_pg}")
+
+    logging.info("Starting to load data from Gold to PostgreSQL...")
+
     # Load dimension
     dim_df = spark.read.parquet("data/gold/nyc_taxi/dim_location/")
 
