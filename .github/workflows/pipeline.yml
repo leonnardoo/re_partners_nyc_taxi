@@ -84,7 +84,7 @@ jobs:
         run: |
           for f in init-db/*.sql; do
             docker run --rm --network host -e PGPASSWORD=${{ secrets.PASSWORD_PG }} postgres:15 \
-            psql -h localhost -U ${{ secrets.USER_PG }} -d nyc_taxi_warehouse -f - < "$f"
+            psql -h localhost -U ${{ secrets.USER_PG }} -d ${{ secrets.DATABASE_PG }} -f - < "$f"
           done
 
       # Execute Sample Ingestion
@@ -111,11 +111,8 @@ jobs:
           docker run --rm \
             -v $(pwd)/data:/app/data \
             --network host \
-            -e DATABASE=nyc_taxi_warehouse \
-            -e USER=test \
-            -e PASSWORD=test_pass \
             nyc-taxi-pipeline:${{ github.sha }} \
-            python3 src/load_gold_to_postgres.py
+            python3 src/load_gold_to_postgres.py --user_pg ${{ secrets.USER_PG }} --password_pg ${{ secrets.PASSWORD_PG }} --database_pg ${{ secrets.DATABASE_PG }}
 
       # Smoke Test: Verify data in Postgres
       - name: Smoke Test - Verify Data in Postgres
@@ -123,7 +120,7 @@ jobs:
           docker run --rm \
             --network host \
             postgres:15 \
-            psql -h localhost -U ${{ secrets.USER_PG }} -d nyc_taxi_warehouse -c "
+            psql -h localhost -U ${{ secrets.USER_PG }} -d ${{ secrets.DATABASE_PG }} -c "
               SELECT 'dim_location' as table_name, COUNT(*) FROM dim_location
               UNION ALL
               SELECT 'fact_trip' as table_name, COUNT(*) FROM fact_trip;
