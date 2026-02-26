@@ -100,7 +100,7 @@ def load_gold_to_bigquery(project_id, dataset_id, table_id, file_path, location=
 
 
 if __name__ == "__main__":
-    # For load on BigQuery, you would first create the schema and then load the data:
+    # For load on BigQuery, you would first create the schema (Terraform) and then load the data:
     # load_gold_to_bigquery("project-id", "gold_nyc_taxi", "dim_location", "data/gold/nyc_taxi/dim_location/")
     # load_gold_to_bigquery("project-id", "gold_nyc_taxi", "fact_trip", "data/gold/nyc_taxi/fact_trip/"))
 
