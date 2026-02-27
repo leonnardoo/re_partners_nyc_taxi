@@ -17,16 +17,16 @@ def ingest_data(years_months: list):
     # URL Base
     base_url = "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata"
 
-    os.makedirs("landing/nyc_taxi/", exist_ok=True)
-    os.makedirs("bronze/nyc_taxi/trip_data", exist_ok=True)
-    os.makedirs("gold/nyc_taxi/dim_location/", exist_ok=True)
-    os.makedirs("gold/nyc_taxi/fact_trip/", exist_ok=True)
+    os.makedirs("data/landing/nyc_taxi/", exist_ok=True)
+    os.makedirs("data/bronze/nyc_taxi/trip_data", exist_ok=True)
+    os.makedirs("data/gold/nyc_taxi/dim_location/", exist_ok=True)
+    os.makedirs("data/gold/nyc_taxi/fact_trip/", exist_ok=True)
     
     for year, month in years_months:
         # Format month (ex: 01)
         month_str = f"{month:02d}"
         file_url = f"{base_url}_{year}-{month_str}.parquet"
-        local_path = f"landing/nyc_taxi/yellow_tripdata_{year}-{month_str}.parquet"
+        local_path = f"data/landing/nyc_taxi/yellow_tripdata_{year}-{month_str}.parquet"
         
         logging.info(f"Reading data from: {year}-{month_str}")
         
@@ -81,5 +81,7 @@ if __name__ == "__main__":
             target_period.append((int(year), int(month)))
         
         ingest_data(target_period)
+    except ValueError:
+        logging.error("Date format invalid. Use YYYY-MM.")
     except Exception as e:
         logging.error(f"Error parsing input months: {e}. Correct format is YYYY-MM, separated by commas (ex: 2023-01,2023-02)")

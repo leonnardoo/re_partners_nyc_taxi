@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
 from dotenv import load_dotenv
+import argparse
 import os
 
 # For load gold to BigQuery (if needed)
@@ -11,18 +12,22 @@ load_dotenv("config/.env")
 import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def load_gold_to_postgres():
+def load_gold_to_postgres(user_pg: str = None, password_pg: str = None, database_pg: str = None):
     spark = SparkSession.builder \
         .appName("Load Gold to DB") \
         .config("spark.jars.packages", "org.postgresql:postgresql:42.7.2") \
         .getOrCreate()
 
     # Database connection properties
-    database = os.getenv("DATABASE")
-    user = os.getenv("USER")
-    password = os.getenv("PASSWORD")
+    database_pg = os.getenv("DATABASE_PG") if not database_pg else database_pg
+    user_pg = os.getenv("USER_PG") if not user_pg else user_pg
+    password_pg = os.getenv("PASSWORD_PG") if not password_pg else password_pg
 
-    db_url = f"jdbc:postgresql://localhost:5432/{database}"
+    db_url = f"jdbc:postgresql://localhost:5432/{database_pg}"
+
+    logging.info(f"Connecting to PostgreSQL database: {database_pg} with user: {user_pg} and password: {password_pg}")
+
+    logging.info("Starting to load data from Gold to PostgreSQL...")
 
     # Load dimension
     dim_df = spark.read.parquet("data/gold/nyc_taxi/dim_location/")
@@ -31,8 +36,8 @@ def load_gold_to_postgres():
     .format("jdbc") \
     .option("url", db_url) \
     .option("dbtable", "dim_location") \
-    .option("user", user) \
-    .option("password", password) \
+    .option("user", user_pg) \
+    .option("password", password_pg) \
     .option("driver", "org.postgresql.Driver") \
     .mode("append") \
     .save()
@@ -46,8 +51,8 @@ def load_gold_to_postgres():
     .format("jdbc") \
     .option("url", db_url) \
     .option("dbtable", "fact_trip") \
-    .option("user", user) \
-    .option("password", password) \
+    .option("user", user_pg) \
+    .option("password", password_pg) \
     .option("driver", "org.postgresql.Driver") \
     .mode("append") \
     .save()
@@ -95,8 +100,19 @@ def load_gold_to_bigquery(project_id, dataset_id, table_id, file_path, location=
 
 
 if __name__ == "__main__":
-    load_gold_to_postgres()
-
-    # For load on BigQuery, you would first create the schema and then load the data:
+    # For load on BigQuery, you would first create the schema (Terraform) and then load the data:
     # load_gold_to_bigquery("project-id", "gold_nyc_taxi", "dim_location", "data/gold/nyc_taxi/dim_location/")
     # load_gold_to_bigquery("project-id", "gold_nyc_taxi", "fact_trip", "data/gold/nyc_taxi/fact_trip/"))
+
+    # Parser configs
+    parser = argparse.ArgumentParser(description="Variable input for loading Gold data to PostgreSQL")
+    parser.add_argument("--user_pg", type=str, required=False, help="PostgreSQL user name")
+    parser.add_argument("--password_pg", type=str, required=False, help="PostgreSQL password")
+    parser.add_argument( "--database_pg", type=str, required=False, help="PostgreSQL database name")
+
+    args = parser.parse_args()
+    
+    try:
+        load_gold_to_postgres(args.user_pg, args.password_pg, args.database_pg)
+    except Exception as e:
+        logging.error(f"Error loading gold data to PostgreSQL: {e}")

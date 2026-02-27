@@ -22,18 +22,27 @@ jobs:
           enable-cache: true # Cache between runs for faster installs
 
       - name: Set up Python
-        run: uv python install 3.9
+        run: uv python install 3.11
+
+      - name: Install Dev Dependencies
+        run: uv sync --group dev
 
       # 2. Sync and Linting
       # The uv tool will automatically sync dependencies from pyproject.toml before running the command
       - name: Run Linting (flake8)
-        run: uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        run: uv run flake8 . --exclude .venv --count --select=E9,F63,F7,F82 --show-source --statistics
 
       # 3. Spark Unit Tests
       - name: Run PySpark Unit Tests
         run: uv run pytest tests/
 
-      # 4. Terraform Validate
+      # 4. Install Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.14.5"
+
+      # 5. Terraform Validate
       - name: Terraform Format & Validate
         run: |
           cd terraform
@@ -46,6 +55,22 @@ jobs:
     name: "Docker Build & Sample Execution"
     needs: validate-and-test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ secrets.DATABASE_PG }}
+          POSTGRES_USER: ${{ secrets.USER_PG }}
+          POSTGRES_PASSWORD: ${{ secrets.PASSWORD_PG }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -54,16 +79,13 @@ jobs:
       - name: Build Pipeline Image
         run: docker build -t nyc-taxi-pipeline:${{ github.sha }} .
 
-      # Setup Database for Sample Run
-      - name: Start Postgres
+      # Initialize Database Schema
+      - name: Initialize Database Schema
         run: |
-          docker run -d --name test_db \
-            -e POSTGRES_USER=test \
-            -e POSTGRES_PASSWORD=test_pass \
-            -e POSTGRES_DB=nyc_taxi_warehouse \
-            -p 5432:5432 \
-            postgres:15
-          sleep 15
+          for f in init-db/*.sql; do
+            docker run --rm --network host -e PGPASSWORD=${{ secrets.PASSWORD_PG }} postgres:15 \
+            psql -h localhost -U ${{ secrets.USER_PG }} -d ${{ secrets.DATABASE_PG }} -f - < "$f"
+          done
 
       # Execute Sample Ingestion
       - name: Execute Sample Ingestion
@@ -79,6 +101,7 @@ jobs:
         run: |
           docker run --rm \
             --network host \
+            -v $(pwd)/data:/app/data \
             nyc-taxi-pipeline:${{ github.sha }} \
             python3 src/transform_gold.py --months 2023-06
 
@@ -86,6 +109,20 @@ jobs:
       - name: Execute Load
         run: |
           docker run --rm \
+            -v $(pwd)/data:/app/data \
             --network host \
             nyc-taxi-pipeline:${{ github.sha }} \
-            python3 src/load_gold_to_postgres.py
+            python3 src/load_gold_to_postgres.py --user_pg ${{ secrets.USER_PG }} --password_pg ${{ secrets.PASSWORD_PG }} --database_pg ${{ secrets.DATABASE_PG }}
+
+      # Smoke Test: Verify data in Postgres
+      - name: Smoke Test - Verify Data in Postgres
+        run: |
+          docker run --rm \
+            --network host \
+            -e PGPASSWORD=${{ secrets.PASSWORD_PG }} \
+            postgres:15 \
+            psql -h 127.0.0.1 -U ${{ secrets.USER_PG }} -d ${{ secrets.DATABASE_PG }} -c "
+              SELECT 'dim_location' as table_name, COUNT(*) FROM dim_location
+              UNION ALL
+              SELECT 'fact_trip' as table_name, COUNT(*) FROM fact_trip;
+            "

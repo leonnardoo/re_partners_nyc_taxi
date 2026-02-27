@@ -5,6 +5,24 @@ import argparse
 import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def clean_trip_data(df):
+    return df.filter("trip_distance > 0 AND total_amount > 0")
+
+def convert_store_flag(df):
+    return df.withColumn("store_and_fwd_flag",
+        F.when(F.col("store_and_fwd_flag") == "Y", True)
+        .when(F.col("store_and_fwd_flag") == "N", False)
+        .otherwise(None)
+    )
+
+def calculate_travel_time(df):
+    return df.withColumn("total_time_travel", 
+        F.regexp_extract(
+            (F.col("tpep_dropoff_datetime") - F.col("tpep_pickup_datetime")).cast("string"), 
+            r"(\d{2}:\d{2}:\d{2})", 1
+        )
+    )          
+
 def transform_to_gold(years_months: list):
     spark_gold = SparkSession.builder \
         .appName("NYC Taxi Gold Transformation - 2") \
@@ -18,7 +36,7 @@ def transform_to_gold(years_months: list):
     spark_gold.catalog.clearCache()
 
     bronze_path = "data/bronze/nyc_taxi/trip_data/"
-    zones_path = "data/bronze/nyc_taxi/taxi_zone/taxi_zone_lookup.csv" # Carregado no Job 1 ou Step Anterior
+    zones_path = "data/bronze/nyc_taxi/taxi_zone/taxi_zone_lookup.csv" # Manually downloaded from https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
     gold_path = "data/gold/nyc_taxi/fact_trip/"
     dim_location_path = "data/gold/nyc_taxi/dim_location/"
 
@@ -62,10 +80,6 @@ def transform_to_gold(years_months: list):
             logging.warning(f"No Data on bronze layer for {year}-{month_str}")
             continue
 
-        # Cleaning and normalization
-        # Filter for inconsistent records (ex: negative distances or amounts)
-        df_cleaned = df_bronze.filter("trip_distance > 0 AND total_amount > 0")
-
         # Create Dimension Table for Locations
         dim_location = df_zones.select(
             F.col("LocationID").cast("int").alias("location_id"),
@@ -74,19 +88,19 @@ def transform_to_gold(years_months: list):
             F.col("service_zone").alias("service_zone")
         )
 
+        # Filter for inconsistent records (ex: negative distances or amounts)
         # Clean and transform the store_and_fwd_flag to boolean
-        df_cleaned = df_cleaned.withColumn("store_and_fwd_flag",
-            F.when(F.col("store_and_fwd_flag") == "Y", True)
-            .when(F.col("store_and_fwd_flag") == "N", False)
-            .otherwise(None) # For any other value, set as null
-        )
+        # Created a new column for total travel time (in seconds) based on pickup and dropoff timestamps
+        df_cleaned = clean_trip_data(df_bronze)
+        df_cleaned_bool = convert_store_flag(df_cleaned)
+        df_final = calculate_travel_time(df_cleaned_bool)
 
-        fact_trips = df_cleaned.select(
+        fact_trips = df_final.select(
             F.monotonically_increasing_id().alias("trip_id"), # Surrogate key
             F.col("VendorID").cast("long").alias("vendor_id"),
             F.col("tpep_pickup_datetime").alias("pickup_time"),
             F.col("tpep_dropoff_datetime").alias("dropoff_time"),
-            F.regexp_extract((F.col("tpep_dropoff_datetime") - F.col("tpep_pickup_datetime")).cast("string"), r"(\d{2}:\d{2}:\d{2})", 1).alias("total_time_travel"), # New column for total travel time
+            F.col("total_time_travel").alias("total_time_travel"),
             F.col("passenger_count").cast("double").cast("int").alias("passenger_count"),
             F.col("trip_distance").cast("double"),
             F.col("RatecodeID").cast("double").cast("int").alias("rate_code_id"),
